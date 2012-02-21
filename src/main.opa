@@ -18,16 +18,22 @@
 */
 
 import stdlib.system
+import stdlib.themes.bootstrap.core
+import mindwave
 
 /** Constants **/
 
 GITHUB_USER = "Aqua-Ye"
 GITHUB_REPO = "OpaChat"
 NB_LAST_MSGS = 10
+MW_TIMER = 5000
+THINKING_THRESHOLD = 70
+RELAXATION_THRESHOLD = 70
 
 /** Types **/
 
-type user = { int id, string name }
+type mindstate = (int, int)
+type user = { int id, string name, option(mindstate) mindwave }
 type source = { system } or { user user }
 type message = {
   source source,
@@ -48,6 +54,7 @@ or {media media}
 or {(user, client_channel) connection}
 or {user disconnection}
 or {stats}
+or {user mindstate}
 
 /** Database **/
 
@@ -120,6 +127,56 @@ client @async function update_stats((uptime, mem)) {
 client @async function update_users(nb_users, users) {
   #users = <>Users: {nb_users}</>
   #user_list = <ul>{users}</ul>
+}
+
+/** MindWave **/
+
+client function mindwave_to_html(mindwave) {
+  match (mindwave) {
+  case {none}: <span class="off icon icon-white icon-cancel"/>
+  case {some:(t, r)}:
+    <span class="on icon icon-white icon-user"/>
+    <span>{t}</span><>-</><span>{r}</span>
+  }
+}
+
+client @async function update_mindwaves(user_minds) {
+  List.iter(function((id, state)) {
+    #{"{id}-state"} = mindwave_to_html(state)
+  }, user_minds)
+}
+
+client reference(option(mindstate)) mindstate =
+  ClientReference.create(none)
+
+client function mind_changed(new_state) {
+  match (ClientReference.get(mindstate)) {
+  case {none}: Option.is_some(new_state)
+  case {some:(t, r)}:
+    match (new_state) {
+    case {none}: true
+    case {some:(thinking, relaxation)}:
+      t > THINKING_THRESHOLD && thinking <= THINKING_THRESHOLD ||
+      t <= THINKING_THRESHOLD && thinking > THINKING_THRESHOLD ||
+      r > RELAXATION_THRESHOLD && relaxation <= RELAXATION_THRESHOLD ||
+      r <= RELAXATION_THRESHOLD && relaxation > RELAXATION_THRESHOLD
+    }
+  }
+}
+
+client function check_mindstate(user) {
+  new_mindstate =
+    if (MindWave.is_present()) {
+      thinking = MindWave.get_thinking_level()
+      relaxation = MindWave.get_relaxation_level()
+      Log.info("MindWave", "thinking:{thinking} - relaxation:{relaxation}")
+      some((thinking, relaxation))
+    } else none
+  if (mind_changed(new_mindstate)) {
+    user = { user with mindwave:new_mindstate }
+    Network.broadcast({mindstate:user}, room)
+  }
+  ClientReference.set(mindstate, new_mindstate)
 }
 
 /** Conversation **/
@@ -238,11 +295,32 @@ server function client_observe(msg) {
             |> List.sort_by(function(u){u.name}, _)
     users_html_list =
       List.fold(function(user, acc) {
-        <li>{user.name}</li>
+        mw = mindwave_to_html(user.mindwave)
+        <li>{user.name} <span id="{user.id}-state" class="mindwave">{mw}</span></li>
         <+> acc
       }, users, <></>)
     update_users(List.length(users), users_html_list)
+  case {mindstate:user} :
+    ServerReference.update(users, IntMap.add(user.id, user, _))
+    users = ServerReference.get(users) |> IntMap.To.val_list(_)
+    waves_list =
+      List.fold(function(user, acc) {
+        (user.id, user.mindwave) +> acc
+      }, users, [])
+    update_mindwaves(waves_list)
   default : void
+  }
+}
+
+/** Init **/
+
+// Init various scheduling tasks
+client function init_scheduling(user, _) {
+  if (Option.is_some(user.mindwave)) {
+    Log.info("MindWave", "present")
+    Scheduler.timer(MW_TIMER, function(){check_mindstate(user)})
+  } else {
+    Log.info("MindWave", "missing")
   }
 }
 
@@ -266,10 +344,11 @@ server function init_client(user, client_channel, _) {
   OpaShare.init(file_uploaded(user))
 }
 
-server @async function enter_chat(user_name, client_channel) {
+server @async function enter_chat(user_name, has_mindwave, client_channel) {
   user = {
     id: Random.int(max_int),
-    name: user_name
+    name: user_name,
+    mindwave: if (has_mindwave) some((0, 0)) else none,
   }
   // #Body is the default body id in Opa
   #main =
@@ -279,7 +358,10 @@ server @async function enter_chat(user_name, client_channel) {
       {OpaShare.html()}
     </div>
     <div id=#content
-         onready={init_client(user, client_channel, _)}>
+         onready={function(e){
+                    init_scheduling(user, e)
+                    init_client(user, client_channel, e)
+                  }}>
       <div id=#stats><div id=#users/><div id=#uptime/><div id=#memory/></div>
       <div id=#conversation/>
       <div id=#chatbar>
@@ -295,7 +377,8 @@ server @async function enter_chat(user_name, client_channel) {
 client @async function join(_) {
   name = Dom.get_value(#name)
   client_channel = Session.make_callback(ignore)
-  enter_chat(name, client_channel)
+  has_mindwave = MindWave.is_present()
+  enter_chat(name, has_mindwave, client_channel)
 }
 
 // Page headers

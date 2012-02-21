@@ -10,9 +10,11 @@ EXE = opa_chat.exe
 
 all: $(EXE)
 
-plugins: plugins/file/file.js
+plugins: plugins/file/file.js plugins/mindwave/mindwave.js
 	$(OPA_PLUGIN) --js-validator-off plugins/file/file.js -o file.opp
+	$(OPA_PLUGIN) --js-validator-off plugins/mindwave/mindwave.js -o mindwave.opp
 	$(OPA) $(OPA_OPT) plugins/file/file.opa file.opp
+	$(OPA) $(OPA_OPT) plugins/mindwave/mindwave.opa mindwave.opp
 
 $(EXE): plugins src/*.opa resources/*
 	$(OPA) $(OPA_OPT) --minimal-version $(MINIMAL_VERSION) *.opp src/*.opa -o $(EXE)
