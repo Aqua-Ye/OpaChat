@@ -1,7 +1,7 @@
 var MindWave = (function () {
     return {
         isPresent: function() {
-            return Math.random() > 0.5;
+            return Math.random() > 0.1;
         },
         getThinkingLevel: function() {
             return Math.floor(Math.random()*101);

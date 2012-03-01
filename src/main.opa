@@ -27,8 +27,6 @@ GITHUB_USER = "Aqua-Ye"
 GITHUB_REPO = "OpaChat"
 NB_LAST_MSGS = 10
 MW_TIMER = 1000
-THINKING_THRESHOLD = 70
-RELAXATION_THRESHOLD = 70
 
 /** Types **/
 
@@ -131,12 +129,20 @@ client @async function update_users(nb_users, users) {
 
 /** MindWave **/
 
+client function level_to_prefix(level) {
+  if (level <= 33) "med"
+  else if (level <= 66) "att"
+  else "blnk"
+}
+
 client function mindwave_to_html(mindwave) {
   match (mindwave) {
-  case {none}: <span class="off icon icon-white icon-cancel"/>
+  case {none}: <span class="icon icon-white icon-cancel"/>
   case {some:(t, r)}:
-    <span class="on icon icon-white icon-user"/>
-    <span>{t}</span><>-</><span>{r}</span>
+    preT = "{level_to_prefix(t)}Face"
+    preR = "{level_to_prefix(r)}Glow"
+    <span class="ns-icon16 {preT}"/>
+    <span class="ns-icon16 {preR}"/>
   }
 }
 
@@ -156,10 +162,12 @@ client function mind_changed(new_state) {
     match (new_state) {
     case {none}: true
     case {some:(thinking, relaxation)}:
-      t > THINKING_THRESHOLD && thinking <= THINKING_THRESHOLD ||
-      t <= THINKING_THRESHOLD && thinking > THINKING_THRESHOLD ||
-      r > RELAXATION_THRESHOLD && relaxation <= RELAXATION_THRESHOLD ||
-      r <= RELAXATION_THRESHOLD && relaxation > RELAXATION_THRESHOLD
+      thinking <= 33 && t > 33 ||
+      thinking <= 66 && (t > 66 || t <= 33) ||
+      thinking > 66 && t <= 66 ||
+      relaxation <= 33 && r > 33 ||
+      relaxation <= 66 && (r > 66 || r <= 33) ||
+      relaxation > 66 && r <= 66
     }
   }
 }
@@ -316,12 +324,9 @@ server function client_observe(msg) {
 
 // Init various scheduling tasks
 client function init_scheduling(user, _) {
-  if (Option.is_some(user.mindwave)) {
-    Log.info("MindWave", "present")
-    Scheduler.timer(MW_TIMER, function(){check_mindstate(user)})
-  } else {
-    Log.info("MindWave", "missing")
-  }
+  Scheduler.timer(MW_TIMER, function(){
+    check_mindstate(user)
+  })
 }
 
 // Init the client from the server
@@ -432,6 +437,7 @@ Server.start(Server.http, [
       "/resources/css/bootstrap.min.css",
       "/resources/css/bootstrap-responsive.min.css",
       "/resources/css/style.css",
+      "/resources/neurosky/icons.css",
     ] }, // include CSS in headers
   { custom : url_parser } // URL parser
 ])
