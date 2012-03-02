@@ -22,8 +22,9 @@ database intmap(OpaShare.file) /files
 module OpaShare {
 
   client function init(callback) {
-    FilePlugin.hook_file_drop(Dom.select_class("dropzone"), waiting_file_treatment, handle_file_selection(callback));
-    FilePlugin.hook_file_chooser(#files, handle_file_selection(callback));
+    // FilePlugin.hook_file_drop(Dom.select_class("dropzone"), waiting_file_treatment, handle_file_selection(callback));
+    // FilePlugin.hook_file_chooser(#files, handle_file_selection(callback));
+    void
   }
 
   client function waiting_file_treatment() {
@@ -63,13 +64,14 @@ module OpaShare {
   }
 
   function html() {
-    <div id=#drop_area class="dropzone">
-      <p id=#share
-         onclick={function(_){Dom.trigger(#files, {click})}}>
-        {DROP_TEXT}
-      </p>
-      <input id=#files type="file" multiple="multiple"/>
-    </div>
+    <></>
+    // <div id=#drop_area class="dropzone">
+    //   <p id=#share
+    //      onclick={function(_){Dom.trigger(#files, {click})}}>
+    //     {DROP_TEXT}
+    //   </p>
+    //   <input id=#files type="file" multiple="multiple"/>
+    // </div>
   }
 
   function get(key) {

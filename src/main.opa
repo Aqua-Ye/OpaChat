@@ -463,13 +463,13 @@ server function start() {
 
 // Parse URL
 url_parser = parser {
-  case "/file/" key=Rule.integer:
-    match (OpaShare.get(key)) {
-    case {some:file}:
-      Resource.binary(file.content, file.mimetype)
-      |> Resource.add_header(_, {content_disposition:{attachment:file.name}})
-    default: start()
-    }
+  // case "/file/" key=Rule.integer:
+  //   match (OpaShare.get(key)) {
+  //   case {some:file}:
+  //     Resource.binary(file.content, file.mimetype)
+  //     |> Resource.add_header(_, {content_disposition:{attachment:file.name}})
+  //   default: start()
+  //   }
   case (.*): start()
 }
 
