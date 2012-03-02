@@ -7,13 +7,14 @@ html {
 body {
     background: #151515 url("/resources/img/texture-grunge-383838-tile.png") repeat 0 0;
     color: gray;
+    font-size:14px;
 }
 a {
     color:#18D;
 }
-h4 {
+h3 {
     color: gray;
-    line-height: 16px;
+    line-height: 18px;
 }
 
 /* Header */
