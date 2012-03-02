@@ -80,7 +80,7 @@ fork_button =
 function build_page(content) {
   <div id=#header>
     <h2 class="pull-left">OpaChat</h2>
-    <div class="buttons pull-right">
+    <div class="buttons pull-left">
       {watch_button}
       {fork_button}
     </div>
@@ -129,7 +129,7 @@ client @async function update_stats((uptime, mem)) {
 
 client @async function update_users(nb_users, users) {
   #users = <>Users: {nb_users}</>
-  #user_list = <ul>{users}</ul>
+  #user_list = <ul class="unstyled">{users}</ul>
 }
 
 /** MindWave **/
@@ -142,12 +142,11 @@ client function level_to_prefix(level) {
 
 client function mindwave_to_html(mindwave) {
   match (mindwave) {
-  case {none}: <span class="icon icon-white icon-cancel"/>
+  case {none}: <span class="ns-icon32 misc"/>
   case {some:(t, r)}:
     preT = "{level_to_prefix(t)}Face"
-    preR = "{level_to_prefix(r)}Glow"
-    <span class="ns-icon16 {preT}"/>
-    <span class="ns-icon16 {preR}"/>
+    preR = "{level_to_prefix(r)}Glow"   
+    <span class="ns-icon32 {preR}"><span class="ns-icon32 {preT}"/></span>
   }
 }
 
@@ -309,7 +308,7 @@ server function client_observe(msg) {
     users_html_list =
       List.fold(function(user, acc) {
         mw = mindwave_to_html(user.mindwave)
-        <li>{user.name} <span id="{user.id}-state" class="mindwave">{mw}</span></li>
+        <li><span id="{user.id}-state" class="mindwave">{mw}</span> {user.name}</li>
         <+> acc
       }, users, <></>)
     update_users(List.length(users), users_html_list)
@@ -400,7 +399,7 @@ server @async function enter_chat(user_name, has_mindwave, client_channel) {
   // #Body is the default body id in Opa
   #main =
     <div id=#sidebar>
-      <h4>Users online</h4>
+      <h3>Users online</h3>
       <div id=#user_list/>
       {OpaShare.html()}
     </div>
@@ -442,7 +441,7 @@ headers =
 // Start page
 server function start() {
   page = build_page(
-    <h4>A real-time web chat built in Opa.</h4>
+    <h3>A real-time web chat built in Opa.</h3>
     <div id=#login class="form-inline">
       <input id=#name
              placeholder="Name"
